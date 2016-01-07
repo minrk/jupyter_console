@@ -10,15 +10,13 @@ input, there is no real readline support, among other limitations.
 import logging
 import signal
 
-from IPython.terminal.ipapp import TerminalIPythonApp, frontend_flags as term_flags
-
 from traitlets import (
     Dict, Any
 )
 from traitlets.config import catch_config_error
 from IPython.utils.warn import error
 
-from jupyter_core.application import JupyterApp, base_aliases, base_flags, NoStart
+from jupyter_core.application import JupyterApp, base_aliases, base_flags
 from jupyter_client.consoleapp import (
         JupyterConsoleApp, app_aliases, app_flags,
     )
@@ -43,10 +41,6 @@ jupyter console --existing # connect to an existing ipython session
 flags = dict(base_flags)
 # start with mixin frontend flags:
 frontend_flags = dict(app_flags)
-# add TerminalIPApp flags:
-frontend_flags.update(term_flags)
-# disable quick startup, as it won't propagate to the kernel anyway
-frontend_flags.pop('quick')
 # update full dict with frontend flags:
 flags.update(frontend_flags)
 
@@ -106,8 +100,6 @@ class ZMQTerminalIPythonApp(JupyterApp, JupyterConsoleApp):
         self.build_kernel_argv(self.extra_args)
 
     def init_shell(self):
-        if self._dispatching:
-            raise NoStart()
         JupyterConsoleApp.initialize(self)
         # relay sigint to kernel
         signal.signal(signal.SIGINT, self.handle_sigint)
@@ -143,6 +135,8 @@ class ZMQTerminalIPythonApp(JupyterApp, JupyterConsoleApp):
     def initialize(self, argv=None):
         """Do actions after construct, but before starting the app."""
         super(ZMQTerminalIPythonApp, self).initialize(argv)
+        if self._dispatching:
+            return
         # create the shell
         self.init_shell()
         # and draw the banner
